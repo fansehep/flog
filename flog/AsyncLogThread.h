@@ -12,11 +12,10 @@ namespace flog {
 class Logger;
 class AsyncLogThread {
 public:
-  AsyncLogThread() 
-    : sleepuseconds_(333)
-    {
+  AsyncLogThread() : sleepuseconds_(333)
+  {
     logthread_ = std::make_unique<std::thread>([this](){SyncLogFile();});
-    };
+  };
   void Push(Logger* log);
   void SyncLogFile();
   void SetSleepuSeconds(uint64_t tim) {

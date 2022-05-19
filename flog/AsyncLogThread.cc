@@ -1,5 +1,5 @@
 #include "AsyncLogThread.h"
-#include "Logging.h"
+#include "Logger.h"
 
 namespace flog {
 
