@@ -1,6 +1,7 @@
 ### flog
 - flog 是一个高性能的C++二进制日志库, 其拥有着让人恐惧的性能。
 - 设计描述 :
+  - flog 的大概设计灵感 参考这篇论文 https://www.usenix.org/system/files/conference/atc18/atc18-yang.pdf
   - flog 使用 thread_local 关键词，每个线程都拥有一个Logger, LoggerBuffer 含有一个LogBuffer, 每个LogBuffer 都对应拥有一个 LogFile.
   - 异步的AsyncLogThread会定期的遍历所有的的 LogBuffer, 将他们依次刷到磁盘中。
   - flog 不记录已知日志，且flog 是二进制的. flog 不记录已知日志的原因，我认为在普通的日志库中，大量的已知的字符串占据了大量的磁盘 IO，而且日志不是时时刻刻都需要使用的，当出现问题才会使用，所以我对 flog 的设计就是不记录已知字符串，只有当你需要使用日志时候才会去看日志。
