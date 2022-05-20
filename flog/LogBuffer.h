@@ -14,25 +14,38 @@ public:
   #define KSMALLBUFFERSIZE 4096 * 2
 
   LogBuffer(int Size = KMIDDLEBUFFERSIZE) 
-    : main_buf_(Size),
-      temp_buf_(Size) {
-      cur_buf_ = &main_buf_;
+    : buf_(Size) 
+      syncline_(0.66)
+      changefile_(false){
   } 
   
   void Append(const char* str, int len);
   
   void Async();
   
-  void Swapbuf();
   LogFile& GetLogFile() {
     return this->file_;
+  }
+  void SetAsyncLine(double line) {
+    this->syncline_ = line;
+  }
+  double GetAsyncLine() {
+    return this->syncline_;
+  }
+  void ChangeFile() {
+    changefile_ = true;
+  }
+  void ChangeLogFileTime(int time) {
+    
   }
 private: 
   struct buffer {
     char* ptr;
     int size_;
     int cur_;
-    buffer(int size = KMIDDLEBUFFERSIZE) : size_(size), cur_(0) {
+    buffer(int size = KMIDDLEBUFFERSIZE) 
+    : size_(size), 
+      cur_(0) {
       ptr = new char[size];
     }
     ~buffer() {
@@ -42,11 +55,12 @@ private:
     }
     void Write(const char* buf, int len);
   };
+  //* 默认不直接刷盘，需要到达一定水平线，才会去刷盘, 默认是 2/3
+  double syncline_;
   std::mutex mutex_;
-  buffer* cur_buf_;
-  buffer main_buf_;
-  buffer temp_buf_;
+  static buffer buf_;
   LogFile file_;
+  bool changefile_;
 };
 }
 #endif

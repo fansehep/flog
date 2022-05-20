@@ -9,21 +9,22 @@ void LogBuffer::buffer::Write(const char* buf, int len) {
 
 void LogBuffer::Append(const char* str, int len) {
   mutex_.lock();
-  cur_buf_->Write(str, len);
+  buf_.Write(str, len);
   mutex_.unlock();
 }
 
 void LogBuffer::Async() {
   mutex_.lock();
-  Swapbuf();
+  if(buf_.cur_ < buf_.size_ * this->GetAsyncLine() ) {
+    return ;
+  }
+  //* 这里不考虑更换日志文件，默认都写在一个文件中去
+  //* 由于是二进制日志，所以这里使用logFormt 来划分为不同的日志文件
+  file_.Write(buf_.ptr, buf_.cur_);
+  buf_.cur_ = 0;
   mutex_.unlock();
-  buffer* t_buf_ = (cur_buf_ == &main_buf_) ? &temp_buf_ : &main_buf_;
-  file_.Write(t_buf_->ptr, t_buf_->size_);
 }
 
-void LogBuffer::Swapbuf() {
-  cur_buf_ = (cur_buf_ == &main_buf_ ? &temp_buf_ : &main_buf_);
-  cur_buf_->cur_ = 0;
-}
+
 
 }

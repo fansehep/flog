@@ -1,6 +1,7 @@
 #include "AsyncLogThread.h"
 #include "Logger.h"
-
+#include <unistd.h>
+#include <sys/time.h>
 namespace flog {
 
 void AsyncLogThread::Push(Logger* log) {
@@ -16,7 +17,7 @@ void AsyncLogThread::SyncLogFile() {
       iter->GetStream().GetBuffer().Async();
     }
     mutex_.unlock();
-    sleep(sleepuseconds_);
+    usleep(sleepuseconds_);
   }
 }
 
