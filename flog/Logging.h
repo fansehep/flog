@@ -10,7 +10,7 @@ AsyncLogThread logthread;
 thread_local Logger logger(&logthread); 
 }
 #define LOG_TRACE(str, ...) flog::logger.GetStream().Take(__FILE__, __LINE__, flog::Logger::LOG_LEVEL::TRACE, str, ##__VA_ARGS__)
-#define LOG_INGO(str, ...) flog::logger.GetStream().Take(__FILE__, __LINE__, flog::Logger::LOG_LEVEL::INFO, str, ##__VA_ARGS__)
+#define LOG_INFO(str, ...) flog::logger.GetStream().Take(__FILE__, __LINE__, flog::Logger::LOG_LEVEL::INFO, str, ##__VA_ARGS__)
 #define LOG_DEBUG(str, ...) flog::logger.GetStream().Take(__FILE__, __LINE__, flog::Logger::LOG_LEVEL::DEBUG, str, ##__VA_ARGS__)
 #define LOG_WARN(str, ...) flog::logger.GetStream().Take(__FILE__, __LINE__, flog::Logger::LOG_LEVEL::WARN, str, ##_VA_ARGS__)
 #define LOG_ERROR(str, ...) flog::logger.GetStream().Take(__FILE__, __LINE__, flog::Logger::LOG_LEVEL::ERROR, str, ##_VA_ARGS__)
