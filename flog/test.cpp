@@ -1,17 +1,13 @@
-//#include "Logging.h"
-//#include "Logging.h"
-#include <sys/time.h>
-#include <unistd.h>
-#include <string.h>
 #include <stdio.h>
-#include <sys/fcntl.h>
-#include <errno.h>
-#include <fcntl.h>
+#include <string.h>
+
 
 int main(void) {
-  char* str_1 = "123123123";
-  LOG_INFO("Hello, world!%d\n", 1);
-  char* p = strstr(str_1, "123");
-  printf("%c %d", *p, p - str_1);
+  char* str_1 = "yangfan has eat";
+  char* str_2 = "gfan";
+  auto t_p = strstr(str_1, str_2);
+  if (t_p != NULL) [[likely]] {
+    printf("%s\n", t_p);
+  }
   return 0;
 }

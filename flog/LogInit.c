@@ -91,7 +91,7 @@ void SimpleFileToLog(FILE* fptr, const char* filename) {
     } else if(idx_6 != NULL) {
       len = idx_5 - linebuf;
     }
-      
+    
     }
 }
 
