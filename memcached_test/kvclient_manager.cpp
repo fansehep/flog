@@ -23,7 +23,6 @@
 #include "kvclient_manager.h"
 
 #include <fcntl.h>
-#include <openssl/conf.h>
 
 #include "kvclient.h"
 
@@ -57,8 +56,12 @@ bool KvClientManager::Init(
         client.AddServer(confiter.first, confiter.second);
     }
     client.PushServer();
-    auto res = cache_.Init(client, inital, max);
+    auto res = cache_.Init(&client, inital, max);
     return res;
+}
+
+KvClientManager::~KvClientManager() {
+    Stop();
 }
 
 void KvClientManager::Stop() {
@@ -70,12 +73,14 @@ void KvClientManager::Set(const std::string& key,
                           const size_t value_len) {
     threadPool_.Schedule([=]() {
         std::string error_log;
-        auto res = cache_.GetKvClient().Set(key, value, value_len, &error_log);
+        auto client = cache_.GetKvClient();
+        auto res = client.Set(key, value, value_len, &error_log);
         if (!res) {
             auto str_view = absl::string_view(value, value_len);
             LOG(ERROR) << "Set key = " << key << " value = " << str_view
                        << " error " << error_log;
         }
+        cache_.RelKvClient(&client);
     });
 }
 
@@ -85,6 +90,7 @@ bool KvClientManager::Get(const std::string& key, std::string* value) {
     if (!res) {
         LOG(INFO) << "Get key = " << key << " error " << client.ResError();
     }
+    cache_.RelKvClient(&client);
     return res;
 }
 
@@ -95,7 +101,7 @@ void KvClientManager::AddPoolClient(
         client.AddServer(confiter.first, confiter.second);
     }
     client.PushServer();
-    cache_.PutKvClient(client);
+    cache_.PutKvClient(&client);
 }
 
 MemCachedPool KvClientManager::GetPool() {

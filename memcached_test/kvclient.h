@@ -23,22 +23,21 @@
 #define CURVEFS_SRC_CLIENT_S3_KVCLIENT_KVCLIENT_H_
 
 #include <libmemcached-1.0/memcached.h>
-#include <libmemcached-1.0/return.h>
-#include <libmemcached-1.0/strerror.h>
-#include <libmemcached-1.0/types/return.h>
-#include <libmemcached/util.h>
-#include <libmemcachedutil-1.0/pool.h>
-#include <netinet/in.h>
 
 #include <atomic>
 #include <chrono>
-#include <libmemcached-1.0/memcached.hpp>
 #include <thread>
+
+#include "absl/strings/str_cat.h"
 
 namespace curvefs {
 
 namespace client {
 
+/**
+ * Single client to kv interface.
+ * Normally, get it from the pool.
+ */
 template <typename T>
 class KvClient {
  private:
@@ -51,6 +50,12 @@ class KvClient {
     bool Init(const std::string& hostname, uint32_t port) {
         return Imp()->InitImp(hostname, port);
     }
+
+    /**
+     * @param: errorlog: if error occurred, the errorlog will take
+     *         the error info and log.
+     * @return: success return true, else return false;
+     */
     bool Set(const std::string& key,
              const char* value,
              const int value_len,
@@ -62,9 +67,17 @@ class KvClient {
         return Imp()->GetImp(key, value);
     }
 
+    /**
+     * add a server to this client server list. after this,
+     * please call PushServer()
+     */
     bool AddServer(const std::string& hostname, const uint32_t port) {
         return Imp()->AddServerImp(hostname, port);
     }
+
+    /**
+     * push the server list to the client.
+     */
     bool PushServer() { return Imp()->PushServerImp(); }
 };
 
@@ -73,9 +86,10 @@ class MemCachedClient : public KvClient<MemCachedClient> {
     MemCachedClient() : server_(nullptr) {
         client_ = memcached_create(nullptr);
     }
-
     MemCachedClient(memcached_st* cli) : client_(cli) {}
 
+ private:
+    friend KvClient<MemCachedClient>;
     bool InitImp() {
         client_ = memcached(nullptr, 0);
         return client_ != nullptr;
@@ -134,6 +148,7 @@ class MemCachedClient : public KvClient<MemCachedClient> {
         return res_ == MEMCACHED_SUCCESS;
     }
 
+ public:
     bool SetClientAttr(memcached_behavior_t flag, uint64_t data) {
         return (memcached_success(memcached_behavior_set(client_, flag, data)));
     }
@@ -146,10 +161,14 @@ class MemCachedClient : public KvClient<MemCachedClient> {
         return memcached_strerror(nullptr, res_);
     }
 
+    // transform the res to a error string
     const std::string ResError(const memcached_return_t res) {
         return memcached_strerror(nullptr, res);
     }
 
+    memcached_st* GetClient() { return client_; }
+
+ private:
     memcached_return_t res_;
     memcached_server_st* server_;
     memcached_st* client_;

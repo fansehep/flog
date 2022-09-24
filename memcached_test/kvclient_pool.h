@@ -20,9 +20,10 @@
  * Author: YangFan (fansehep)
  */
 
-#include <assert.h>
+#ifndef CURVEFS_SRC_CLIENT_S3_KVCLIENT_KVCLIENT_POOL_H_
+#define CURVEFS_SRC_CLIENT_S3_KVCLIENT_KVCLIENT_POOL_H_
+
 #include <glog/logging.h>
-#include <libmemcached-1.0/types/return.h>
 #include <libmemcachedutil-1.0/pool.h>
 
 #include "kvclient.h"
@@ -41,11 +42,13 @@ class KvClientPool {
 
     kvclient GetKvClient() { return Imp()->GetKvClientImp(); }
 
+    void RelKvClient(kvclient* cli) { return Imp()->RelKvClientImp(cli); }
+
     bool Init(const char* buf, const size_t buf_len) {
         return Imp()->InitImp(buf, buf_len);
     }
 
-    bool Init(const MemCachedClient& client, int inital, int max) {
+    bool Init(kvclient* client, int inital, int max) {
         return Imp()->InitImp(client, inital, max);
     }
 
@@ -54,17 +57,25 @@ class KvClientPool {
     bool AddServer(const std::string& hostname, const uint32_t port) {
         return Imp()->AddServerImp(hostname, port);
     }
+
+    bool PutKvClient(kvclient* client) { return Imp()->PutKvClientImp(client); }
 };
 
 class MemCachedPool : public KvClientPool<MemCachedClient, MemCachedPool> {
  public:
-
     MemCachedPool() : clientcount_(0), pool_(nullptr) {}
 
-    bool InitImp(const MemCachedClient& client, int inital, int max) {
-        assert(client.client_ != nullptr);
-        pool_ =
-            memcached_pool_create(client.client_, inital, max > 32 ? max : 32);
+ private:
+    friend KvClientPool<MemCachedClient, MemCachedPool>;
+
+    void RelKvClientImp(MemCachedClient* cli) {
+        auto ret = memcached_pool_release(pool_, cli->GetClient());
+        assert(ret == MEMCACHED_SUCCESS);
+    }
+
+    bool InitImp(MemCachedClient* client, int inital, int max) {
+        pool_ = memcached_pool_create(client->GetClient(), inital,
+                                      max > 32 ? max : 32);
         return pool_ != nullptr;
     }
 
@@ -92,14 +103,15 @@ class MemCachedPool : public KvClientPool<MemCachedClient, MemCachedPool> {
         }
     }
 
-    bool PutKvClient(const MemCachedClient& memclient) {
+    bool PutKvClientImp(MemCachedClient* memclient) {
         clientcount_++;
         assert(nullptr != pool_);
         memcached_return_t res;
-        res = memcached_pool_push(pool_, memclient.client_);
+        res = memcached_pool_push(pool_, memclient->GetClient());
         return res == MEMCACHED_SUCCESS;
     }
 
+ public:
     memcached_return_t SetBehavior(const memcached_behavior_t flag,
                                    const uint64_t data) {
         return memcached_pool_behavior_set(pool_, flag, data);
@@ -118,3 +130,5 @@ class MemCachedPool : public KvClientPool<MemCachedClient, MemCachedPool> {
 } // namespace client
 
 } // namespace curvefs
+
+#endif
