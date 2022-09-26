@@ -1,20 +1,36 @@
 #include <iostream>
+#include <memory>
 
 #include "kvclient_manager.h"
+#include "memcache_client.h"
+#include <string.h>
 
+using ::curvefs::client::KvClientManager;
+using ::curvefs::client::MemCachedClient;
+using ::curvefs::client::KvClientManagerConfig;
 
 // simple_test pass
 int main() {
-    curvefs::client::KvClientManager kvcli;
-    const std::vector<std::pair<std::string, uint32_t>> conf = {
-        {"127.0.0.1", 18080}
-    };
-    kvcli.Init(conf, 5, 32);
-    char value[] = "1234";
-    kvcli.Set("123", value, strlen(value));
-    sleep(2);
+    KvClientManager<MemCachedClient> client;
+    std::unique_ptr<MemCachedClient> client_ = std::make_unique<MemCachedClient>();
     std::string res;
-    kvcli.Get("123", &res);
-    std::cout << res;
+    auto ue = client_->AddServer("127.0.0.1", 18080, &res);
+    if (!ue) {
+        LOG(ERROR) << "addserver error " << res;
+    }
+    ue = client_->PushServer();
+    if (!ue) {
+        LOG(ERROR) << "push server error";
+    }
+    auto conf = KvClientManagerConfig<MemCachedClient>();
+    conf.kvclient = (std::move(client_));
+    client.Init(conf);
+
+    char str[] = "456890";
+    client.Set("123", str, strlen(str));
+    sleep(2);
+    std::string rest;
+    client.Get("123", &rest);
+    std::cout << rest << std::endl;
     return 0;
 }

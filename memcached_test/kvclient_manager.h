@@ -23,67 +23,82 @@
 #ifndef CURVEFS_SRC_CLIENT_S3_KVCLIENT_KVCLIENT_MANAGER_H_
 #define CURVEFS_SRC_CLIENT_S3_KVCLIENT_KVCLIENT_MANAGER_H_
 
-#include <absl/synchronization/internal/thread_pool.h>
 
-#include "kvclient.h"
-#include "kvclient_pool.h"
+#include <iostream>
+#include <memory>
+#include <glog/logging.h>
+#include <absl/strings/string_view.h>
+#include <absl/synchronization/internal/thread_pool.h>
+#include <string_view>
+#include "memcache_client.h"
 
 namespace curvefs {
 
 namespace client {
 
-using ::absl::synchronization_internal::ThreadPool;
+template <typename CacheClient>
+struct KvClientManagerConfig {
+    std::unique_ptr<CacheClient> kvclient;
+    int threadPooln;
+};
 
+template <typename CacheClient>
 class KvClientManager {
  public:
     KvClientManager() : threadPool_(1) {}
-    ~KvClientManager();
-    /**
-     * config with the file path
-     * @param: kvclientconfigpath: the config file path
-     * @return: init success return true, otherwise return false
-     */
-    bool Init(const std::string& kvclientconfigpath);
+    ~KvClientManager() { Uninit(); }
 
-    /**
-     * config with the host + port
-     * @param: conf: a nums of {ip, port}
-     * @param: inital: the default number of kv connection pool connections
-     * @param: max: the connection max number of connections. default is 32
-     * @return: init success return true, otherwise return false
-     */
-    bool Init(const std::vector<std::pair<std::string, uint32_t>>& conf,
-              int inital,
-              int max);
+    bool Init(KvClientManagerConfig<CacheClient>& config) {
+        client_ = (std::move(config.kvclient));
+        return true;
+    }
 
     /**
      * close the connection with kv
      */
-    void Stop();
+    void Uninit() {
+        client_->UnInit();
+    }
 
     /**
      * It will get a db client and set the key value asynchronusly.
      * The set task will push threadpool, you'd better
      * don't get the key immediately.
      */
-    void Set(const std::string& key, const char* value, const size_t value_len);
+    void Set(const std::string& key,
+             const char* value,
+             const size_t value_len) {
+        threadPool_.Schedule([=]() {
+            std::string error_log;
+            auto res = client_->Set(key, value, value_len, &error_log);
+            if (!res) {
+                auto val_view = std::string_view(value, value_len);
+                LOG(ERROR) << "Set key = " << key << " value = " << val_view
+                           << " " << error_log;
+            }
+        });
+    }
 
     /**
      * get value by key.
      * the value must be empty.
      */
-    bool Get(const std::string& key, std::string* value);
+    bool Get(const std::string& key, std::string* value) {
+        std::string error_log;
+        auto res = client_->Get(key, value, &error_log);
+        if (!res) {
+            VLOG(9) << "Get Key = " << key << " " << error_log;
+        }
+        return res;
+    }
 
-    /**
-     * add a client to connection pool with the conf
-     */
-    void AddPoolClient(
-        const std::vector<std::pair<std::string, uint32_t>>& conf);
-    MemCachedPool GetPool();
+    CacheClient GetClient() {
+        return client_.get();
+    }
 
  private:
-    ThreadPool threadPool_;
-    MemCachedPool cache_;
+    absl::synchronization_internal::ThreadPool threadPool_;
+    std::unique_ptr<CacheClient> client_;
 };
 
 } // namespace client
