@@ -45,7 +45,7 @@ struct KvClientManagerConfig {
 template <typename CacheClient>
 class KvClientManager {
  public:
-    KvClientManager() : threadPool_(1) {}
+    KvClientManager() : threadPool_(3) {}
     ~KvClientManager() { Uninit(); }
 
     bool Init(KvClientManagerConfig<CacheClient>& config) {
